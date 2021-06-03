@@ -1,3 +1,5 @@
+import breakpoints from "./breakpoints";
+
 const styles = {
   addButton: {
     backgroundColor: "rgb(25,114,120)",
@@ -46,8 +48,20 @@ const styles = {
     "& span": {
       fontWeight: 100,
     },
+    [breakpoints.down("sm")]: {
+      flexDirection: "column-reverse",
+      justifyContent: "center",
+      alignItems: "center",
+      margin: "1.5rem 0",
+    },
   },
-  btnContainer: {},
+  btnContainer: {
+    [breakpoints.down("sm")]: {
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+  },
   mainTimerContainer: {
     fontSize: "3rem",
     fontWeight: 100,
@@ -56,6 +70,9 @@ const styles = {
   closeButtonMessage: {
     opacity: 0,
     visibility: "hidden",
+    [breakpoints.down("sm")]: {
+      display: "none",
+    },
   },
 };
 

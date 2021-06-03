@@ -13,10 +13,13 @@ import styles from "./styles/timerStyles";
 
 function Timer(props) {
   const initialTimers = JSON.parse(window.localStorage.getItem("timers")) || [];
+  const initialActiveTimers = JSON.parse(
+    window.localStorage.getItem("activeTimer")
+  ) || { id: "", index: "" };
 
   const { classes, isDarkMode } = props;
   const [timers, setTimers] = useState(initialTimers);
-  const [activeTimer, setActiveTimer] = useState({ id: "", index: "" });
+  const [activeTimer, setActiveTimer] = useState(initialActiveTimers);
   const [grandTotalTime, setGrandTotalTime] = useState(() => {
     const initialState = timers.reduce(
       (acc, timer) => acc + timer.totalTimeInSec,
@@ -31,6 +34,10 @@ function Timer(props) {
   }, [timers]);
 
   useEffect(() => {
+    window.localStorage.setItem("activeTimer", JSON.stringify(activeTimer));
+  }, [activeTimer]);
+
+  useEffect(() => {
     let interval = null;
     setGrandTotalTime(
       timers.reduce((acc, timer) => acc + timer.totalTimeInSec, 0)
@@ -41,12 +48,13 @@ function Timer(props) {
           id: timers[activeTimer.index].id,
           isRunning: timers[activeTimer.index].isRunning,
           totalTimeInSec: timers[activeTimer.index].totalTimeInSec + 1,
+          title: timers[activeTimer.index].title,
+          content: timers[activeTimer.index].content,
         };
 
         const TimersCopy = timers;
         TimersCopy[activeTimer.index] = newTimer;
         setTimers(TimersCopy);
-        console.log(timers);
         setGrandTotalTime(
           timers.reduce((acc, timer) => acc + timer.totalTimeInSec, 0)
         );
@@ -55,7 +63,7 @@ function Timer(props) {
       clearInterval(interval);
     }
     return () => clearInterval(interval);
-  }, [isActive, grandTotalTime, timers]);
+  }, [isActive, grandTotalTime, timers, activeTimer]);
 
   const addNewTimerToArray = () => {
     setTimers([
@@ -64,8 +72,19 @@ function Timer(props) {
         id: uuid(),
         totalTimeInSec: 0,
         isRunning: false,
+        title: "",
+        content: "",
       },
     ]);
+  };
+
+  const updateTimerText = (timerID, contentObject) => {
+    const { title, content } = contentObject;
+    setTimers(
+      timers.map((timer) => {
+        return timer.id === timerID ? { ...timer, title, content } : timer;
+      })
+    );
   };
 
   const startTimer = (timerID) => {
@@ -91,7 +110,10 @@ function Timer(props) {
   };
 
   const deleteTimer = (timerID) => {
-    if (activeTimer.id === timerID) setActiveTimer({ id: "", index: "" });
+    if (activeTimer.id === timerID) {
+      pauseTimer(timerID);
+      setActiveTimer({ id: "", index: "" });
+    }
     setTimers(
       timers.filter((timer) => {
         return timer.id !== timerID;
@@ -108,6 +130,8 @@ function Timer(props) {
       id: uuid(),
       isRunning: false,
       totalTimeInSec: copyTimer[0].totalTimeInSec,
+      title: copyTimer[0].title,
+      content: copyTimer[0].content,
     };
 
     setTimers([...timers, newTimer]);
@@ -169,6 +193,8 @@ function Timer(props) {
               : timer;
           })
         );
+      default:
+        return;
     }
   }
 
@@ -239,6 +265,7 @@ function Timer(props) {
               pauseTimer={pauseTimer}
               adjustTimeReducer={adjustTimeReducer}
               isDarkMode={isDarkMode}
+              updateTimerText={updateTimerText}
             />
           );
         })}

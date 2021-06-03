@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import useToggleBoolean from "./hooks/useToggleBoolean";
 import MoreVertIcon from "@material-ui/icons/MoreVert";
 import TextField from "@material-ui/core/TextField";
@@ -17,6 +17,8 @@ function DetailedTimer(props) {
   const {
     classes,
     id,
+    title,
+    content,
     totalTimeInSec,
     isRunning,
     deleteTimer,
@@ -24,7 +26,18 @@ function DetailedTimer(props) {
     startTimer,
     pauseTimer,
     adjustTimeReducer,
+    updateTimerText,
   } = props;
+
+  const [input, setInput] = useState({ title, content });
+
+  useEffect(() => {
+    updateTimerText(id, input);
+  }, [input, id]);
+
+  const handleChange = (evt) => {
+    setInput({ ...input, [evt.target.name]: evt.target.value });
+  };
 
   const handleDeleteTimer = () => {
     deleteTimer(id);
@@ -172,21 +185,31 @@ function DetailedTimer(props) {
 
       <form noValidate autoComplete="off" className={classes.form}>
         <TextField
+          name="title"
           id="standard-basic"
           placeholder="Title"
           fullWidth
           className={classes.textInput}
+          value={input.title}
+          onChange={handleChange}
         />
         <TextField
+          name="content"
           id="standard-basic"
           multiline
           rows={6}
           fullWidth
           className={classes.textInput}
+          value={input.content}
+          onChange={handleChange}
         />
       </form>
     </div>
   );
 }
 
-export default withStyles(styles)(DetailedTimer);
+const areEqual = (oldProps, curProps) => {
+  return JSON.stringify(oldProps) === JSON.stringify(curProps);
+};
+
+export default React.memo(withStyles(styles)(DetailedTimer), areEqual);
