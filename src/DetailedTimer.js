@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import useToggleBoolean from "./hooks/useToggleBoolean";
 import MoreVertIcon from "@material-ui/icons/MoreVert";
 import TextField from "@material-ui/core/TextField";
@@ -11,20 +11,42 @@ import FileCopyIcon from "@material-ui/icons/FileCopy";
 import RotateLeftIcon from "@material-ui/icons/RotateLeft";
 import ArrowBackIcon from "@material-ui/icons/ArrowBack";
 import styles from "./styles/detailedTimerStyles";
+import { useTimer } from "use-timer";
 
 function DetailedTimer(props) {
   const [isBtnMoreClicked, toggleIsBtnMoreClicked] = useToggleBoolean(false);
+  const [valueControler, toggleValueControler] = useToggleBoolean(false);
   const {
     classes,
     id,
+    title,
+    content,
     totalTimeInSec,
     isRunning,
     deleteTimer,
     duplicateTimer,
     startTimer,
     pauseTimer,
-    adjustTimeReducer,
+    updateTimerTotalTimeInSec,
+    dispatch,
   } = props;
+  let initTimeValue = valueControler ? 0 : totalTimeInSec;
+  const { time, start, pause, reset, status } = useTimer({
+    initialTime: initTimeValue,
+  });
+
+  console.log(initTimeValue);
+
+  const [input, setInput] = useState({ title, content });
+
+  useEffect(() => {
+    updateTimerTotalTimeInSec(id, time);
+  }, [time]);
+
+  const handleChange = (evt) => {
+    setInput({ ...input, [evt.target.name]: evt.target.value });
+    dispatch({ type: "UPDATE_TIMER_TEXT", id, payload: input });
+  };
 
   const handleDeleteTimer = () => {
     deleteTimer(id);
@@ -36,7 +58,9 @@ function DetailedTimer(props) {
   };
 
   const handleStartTimer = () => {
+    if (!valueControler) toggleValueControler();
     startTimer(id);
+    start();
   };
 
   const handlePauseTimer = () => {
@@ -45,8 +69,13 @@ function DetailedTimer(props) {
 
   const handleReset = () => {
     toggleIsBtnMoreClicked();
-    adjustTimeReducer({ type: "reset", id });
+    reset();
+    pauseTimer(id);
+    updateTimerTotalTimeInSec(id, time);
   };
+
+  !isRunning && status === "RUNNING" && pause();
+  isRunning && status === "PAUSED" && start();
 
   const actionBtn = !isRunning ? (
     <IconButton
@@ -109,18 +138,16 @@ function DetailedTimer(props) {
             className={classes.arrowButtons}
             fontSize="small"
             viewBox="0 0 20 20"
-            onClick={() => adjustTimeReducer({ type: "addHour", id: id })}
+            onClick={() => dispatch({ type: "ADD_HOUR", id: id })}
           >
             <path d="M15 14h-10l5-9 5 9z" />
           </SvgIcon>
-          <span>
-            {String(Math.trunc(totalTimeInSec / 3600)).padStart(2, 0)}
-          </span>{" "}
+          <span>{String(Math.trunc(time / 3600)).padStart(2, 0)}</span>{" "}
           <SvgIcon
             className={classes.arrowButtons}
             fontSize="small"
             viewBox="0 0 20 20"
-            onClick={() => adjustTimeReducer({ type: "extractHour", id: id })}
+            onClick={() => dispatch({ type: "EXTRACT_HOUR", id: id })}
           >
             <path d="M5 6h10l-5 9-5-9z" />
           </SvgIcon>
@@ -131,27 +158,23 @@ function DetailedTimer(props) {
             className={classes.arrowButtons}
             fontSize="small"
             viewBox="0 0 20 20"
-            onClick={() => adjustTimeReducer({ type: "addMinute", id: id })}
+            onClick={() => dispatch({ type: "ADD_MINUTE", id: id })}
           >
             <path d="M15 14h-10l5-9 5 9z" />
           </SvgIcon>
-          <span>
-            {String(Math.trunc((totalTimeInSec % 3600) / 60)).padStart(2, 0)}
-          </span>{" "}
+          <span>{String(Math.trunc((time % 3600) / 60)).padStart(2, 0)}</span>{" "}
           <SvgIcon
             className={classes.arrowButtons}
             fontSize="small"
             viewBox="0 0 20 20"
-            onClick={() => adjustTimeReducer({ type: "extractMinute", id: id })}
+            onClick={() => dispatch({ type: "EXTRACT_MINUTE", id: id })}
           >
             <path d="M5 6h10l-5 9-5-9z" />
           </SvgIcon>
         </div>
         <span>:</span>
         <div className={classes.unitContainer}>
-          <span>
-            {String(Math.trunc((totalTimeInSec % 3600) % 60)).padStart(2, 0)}
-          </span>{" "}
+          <span>{String(Math.trunc((time % 3600) % 60)).padStart(2, 0)}</span>{" "}
         </div>
       </div>
       <IconButton
@@ -172,21 +195,31 @@ function DetailedTimer(props) {
 
       <form noValidate autoComplete="off" className={classes.form}>
         <TextField
+          name="title"
           id="standard-basic"
           placeholder="Title"
           fullWidth
           className={classes.textInput}
+          value={input.title}
+          onChange={handleChange}
         />
         <TextField
+          name="content"
           id="standard-basic"
           multiline
           rows={6}
           fullWidth
           className={classes.textInput}
+          value={input.content}
+          onChange={handleChange}
         />
       </form>
     </div>
   );
 }
 
-export default withStyles(styles)(DetailedTimer);
+const areEqual = (oldProps, curProps) => {
+  return JSON.stringify(oldProps) === JSON.stringify(curProps);
+};
+
+export default React.memo(withStyles(styles)(DetailedTimer), areEqual);

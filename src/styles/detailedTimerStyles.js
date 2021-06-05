@@ -1,3 +1,5 @@
+import breakpoints from "./breakpoints";
+
 const styles = {
   root: {
     "@global": {
@@ -13,6 +15,10 @@ const styles = {
     marginTop: "1rem",
     borderRadius: "5px",
     overflow: "hidden",
+    [breakpoints.down("xxs")]: {
+      width: "100%",
+      marginLeft: 0,
+    },
   },
   display: {
     height: "53px",

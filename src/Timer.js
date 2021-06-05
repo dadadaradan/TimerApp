@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { v4 as uuid } from "uuid";
+import React, { useEffect, useState, useReducer } from "react";
 import DetailedTimer from "./DetailedTimer";
 import { withStyles } from "@material-ui/core";
 import useToggleBoolean from "./hooks/useToggleBoolean";
+import timerReducer from "./reducers/timerReducer";
 
 import AddIcon from "@material-ui/icons/Add";
 import IconButton from "@material-ui/core/IconButton";
@@ -13,108 +13,41 @@ import styles from "./styles/timerStyles";
 
 function Timer(props) {
   const initialTimers = JSON.parse(window.localStorage.getItem("timers")) || [];
-
   const { classes, isDarkMode } = props;
-  const [timers, setTimers] = useState(initialTimers);
+  const [timers, dispatch] = useReducer(timerReducer, initialTimers);
   const [activeTimer, setActiveTimer] = useState({ id: "", index: "" });
-  const [grandTotalTime, setGrandTotalTime] = useState(() => {
-    const initialState = timers.reduce(
-      (acc, timer) => acc + timer.totalTimeInSec,
-      0
-    );
-    return initialState;
-  });
+  const [grandTotalTime, setGrandTotalTime] = useState(
+    timers.reduce((acc, timer) => acc + timer.totalTimeInSec, 0)
+  );
   const [isActive, toggleIsActive] = useToggleBoolean(false);
 
   useEffect(() => {
-    window.localStorage.setItem("timers", JSON.stringify(timers));
-  }, [timers]);
-
-  useEffect(() => {
-    let interval = null;
     setGrandTotalTime(
       timers.reduce((acc, timer) => acc + timer.totalTimeInSec, 0)
     );
-    if (timers.some((timer) => timer.isRunning === true)) {
-      interval = setInterval(() => {
-        const newTimer = {
-          id: timers[activeTimer.index].id,
-          isRunning: timers[activeTimer.index].isRunning,
-          totalTimeInSec: timers[activeTimer.index].totalTimeInSec + 1,
-        };
-
-        const TimersCopy = timers;
-        TimersCopy[activeTimer.index] = newTimer;
-        setTimers(TimersCopy);
-        console.log(timers);
-        setGrandTotalTime(
-          timers.reduce((acc, timer) => acc + timer.totalTimeInSec, 0)
-        );
-      }, 1000);
-    } else if (!isActive && grandTotalTime !== 0) {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [isActive, grandTotalTime, timers]);
+    window.localStorage.setItem("timers", JSON.stringify(timers));
+  }, [timers]);
 
   const addNewTimerToArray = () => {
-    setTimers([
-      ...timers,
-      {
-        id: uuid(),
-        totalTimeInSec: 0,
-        isRunning: false,
-      },
-    ]);
-  };
-
-  const startTimer = (timerID) => {
-    const activeTimerIndex = timers.findIndex((timer) => timer.id === timerID);
-    setTimers(
-      timers.map((timer) => {
-        return timer.id === timerID
-          ? { ...timer, isRunning: true }
-          : { ...timer, isRunning: false };
-      })
-    );
-    setActiveTimer({ id: timerID, index: activeTimerIndex });
-    if (!isActive) toggleIsActive();
+    dispatch({ type: "ADD_TIMER_TO_ARRAY" });
   };
 
   const pauseTimer = (timerID) => {
-    setTimers(
-      timers.map((timer) => {
-        return timer.id === timerID ? { ...timer, isRunning: false } : timer;
-      })
-    );
+    dispatch({ type: "PAUSE_TIMERS" });
     toggleIsActive();
   };
 
   const deleteTimer = (timerID) => {
     if (activeTimer.id === timerID) setActiveTimer({ id: "", index: "" });
-    setTimers(
-      timers.filter((timer) => {
-        return timer.id !== timerID;
-      })
-    );
+    dispatch({ type: "DELETE_TIMER", id: timerID });
   };
 
   const duplicateTimer = (timerID) => {
-    const copyTimer = timers.filter((timer) => {
-      return timer.id === timerID;
-    });
-
-    const newTimer = {
-      id: uuid(),
-      isRunning: false,
-      totalTimeInSec: copyTimer[0].totalTimeInSec,
-    };
-
-    setTimers([...timers, newTimer]);
+    dispatch({ type: "DUPLICATE_TIMER", id: timerID });
   };
 
   const deleteAllTimers = () => {
-    setTimers([]);
+    dispatch({ type: "DELETE_ALL_TIMERS" });
     setActiveTimer({ id: "", index: "" });
   };
 
@@ -123,54 +56,15 @@ function Timer(props) {
     startTimer(activeTimer.id);
   };
 
-  function adjustTimeReducer(action) {
-    switch (action.type) {
-      case "addMinute":
-        return setTimers(
-          timers.map((timer) => {
-            return timer.id === action.id
-              ? { ...timer, totalTimeInSec: timer.totalTimeInSec + 60 }
-              : timer;
-          })
-        );
+  const updateTimerTotalTimeInSec = (timerID, time) => {
+    dispatch({ type: "UPDATE_TIME_IN_TIMERS", id: timerID, payload: time });
+  };
 
-      case "extractMinute":
-        return setTimers(
-          timers.map((timer) => {
-            if (timer.totalTimeInSec < 60) return timer;
-            return timer.id === action.id
-              ? { ...timer, totalTimeInSec: timer.totalTimeInSec - 60 }
-              : timer;
-          })
-        );
-
-      case "addHour":
-        return setTimers(
-          timers.map((timer) => {
-            return timer.id === action.id
-              ? { ...timer, totalTimeInSec: timer.totalTimeInSec + 3600 }
-              : timer;
-          })
-        );
-      case "extractHour":
-        return setTimers(
-          timers.map((timer) => {
-            if (timer.totalTimeInSec <= 0) return timer;
-            return timer.id === action.id
-              ? { ...timer, totalTimeInSec: timer.totalTimeInSec - 3600 }
-              : timer;
-          })
-        );
-      case "reset":
-        return setTimers(
-          timers.map((timer) => {
-            return timer.id === action.id
-              ? { ...timer, totalTimeInSec: 0 }
-              : timer;
-          })
-        );
-    }
-  }
+  const startTimer = (timerID) => {
+    dispatch({ type: "START_TIMER", id: timerID });
+    let activeTimerIndex = timers.findIndex((timer) => timer.id === timerID);
+    setActiveTimer({ id: timerID, index: activeTimerIndex });
+  };
 
   const playPauseBtn = isActive ? (
     <IconButton
@@ -237,8 +131,9 @@ function Timer(props) {
               startTimer={startTimer}
               duplicateTimer={duplicateTimer}
               pauseTimer={pauseTimer}
-              adjustTimeReducer={adjustTimeReducer}
               isDarkMode={isDarkMode}
+              updateTimerTotalTimeInSec={updateTimerTotalTimeInSec}
+              dispatch={dispatch}
             />
           );
         })}
